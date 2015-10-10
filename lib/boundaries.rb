@@ -1,6 +1,5 @@
 require "boundaries/version"
-require 'boundaries/base'
+require 'boundaries/boundary'
 
 module Boundaries
-  # Your code goes here...
 end
