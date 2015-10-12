@@ -51,8 +51,10 @@ module Boundaries
         h << v if h.is_a? Array
       end
     end
-    def allows(*args, &blk)
-      @acc << MethodStub.new(*args, &blk)
+    def with(*args)
+      stub = MethodStub.new(*args)
+      @acc << stub
+      stub
     end
 
     def method_missing(m, *args, &blk)

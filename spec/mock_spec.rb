@@ -23,7 +23,7 @@ describe Mock do
       foo = mock.new(inherit_attrs)
       expect(foo.attributes).to eq( { :attr1 => :base, :attr2 => :new_value, :attr3 => :new_value } )
     end
-    it 'inherited nested attrs', wip: true do
+    it 'inherited nested attrs' do
       foo = mock.new(nested_inherit_attrs)
       expect(foo.attributes).to eq( { :attr1 => :base, :attr2 =>  { :attr1 => :new_value, :attr2 => :base } } )
     end
@@ -32,10 +32,10 @@ describe Mock do
   describe 'setting stubs' do
     before(:each) { MethodStub.send(:public, *MethodStub.private_instance_methods) }
 
-    let(:put) { { :put => [ lambda { allows :bat } ] } } 
-    let(:get) { { :get => [ lambda { allows :search; allows :bar }, lambda { allows :foo } ] } }
+    let(:put) { { :put => [ lambda { with :bat } ] } } 
+    let(:get) { { :get => [ lambda { with :search; with :bar }, lambda { with :foo } ] } }
 
-    let(:get_with_return) { { :get => [ lambda { allows(:search).and_returns {}  } ] } }
+    let(:get_with_return) { { :get => [ lambda { with(:search).and_returns {}  } ] } }
 
     it 'evaluates attributes' do
       foo = Mock.new([], [put] )

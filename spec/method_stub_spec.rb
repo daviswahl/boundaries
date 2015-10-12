@@ -5,24 +5,28 @@ describe MethodStub do
   describe 'setting attributes' do
     before(:each) { MethodStub.send(:public, *MethodStub.private_instance_methods) }
 
-    let(:put) { { :put => [ lambda { allows :bat } ] } } 
-    let(:get) { { :get => [ lambda { allows :search; allows :bar }, lambda { allows :foo } ] } }
+    let(:acc) { StubAccumulator }
+    let(:with_foo)               { acc.new.accumulate(&-> { with(:foo) }) } 
+    let(:foo) { with_foo.serialize.first }
+    let(:with_foo_with_return)  { acc.new.accumulate(&-> { with(:foo).and_returns(:bar) }) }
+    let(:a_proc) { proc { |b| b.to_s } }
 
-    it 'evaluates attributes' do
-      foo = Mock.new([], [put, get])
-      
-      expect(foo.stubs[:put].first.arguments).to eq(:bat)
+    let(:with_foo_with_return_block)  { prc = a_proc; acc.new.accumulate(&-> { with(:foo).and_returns(:bar, &prc) }) }
 
+    let(:foo_with_return) { with_foo_with_return.serialize.first }
+
+    let(:foo_with_return_block) { with_foo_with_return_block.serialize.first }
+
+    it 'can set return values' do
+      expect(foo_with_return.returns).to eq({ value: :bar, block: nil})
     end
 
-    it 'nested attrs' do
-      #foo = Mock.new(nested_attrs)
+    it 'can set return block' do
+      expect(foo_with_return_block.returns).to eq({ value: :bar, block: a_proc})
     end
-    it 'inherited attrs' do
-      #foo = Mock.new(inherit_attrs)
-    end
-    it 'inherited nested attrs', wip: true do
-      #foo = Mock.new(nested_inherit_attrs)
+
+    it 'can set arguments' do
+      expect(foo.arguments).to eq(:foo)
     end
   end
-end
+end 
