@@ -10,9 +10,8 @@ module Boundaries
 
     def self.inherited(klass)
       klass.class_eval do
-        @defined = {}
+        @definitions = {}
         @caller = nil
-        @definition = Class.new(Boundaries::Definition)
       end
     end
 
@@ -22,10 +21,11 @@ module Boundaries
     end
 
     def self.define(key, options={}, &blk)
-      definition = @definition.new(key, self, options)
+      definition = Boundaries::Definition.new(key, self, options)
       definition.instance_exec(&blk)
-      definition.evaluate!(@defined, @mock_attributes)
-      @defined[key] = definition
+
+      @definitions[key] = definition
+      #@mocks[key] = BoundaryMock.new(definition)
     end
 
     def self.list

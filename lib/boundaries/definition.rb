@@ -1,100 +1,45 @@
 module Boundaries
-  class ValueBox < BasicObject
+  class AttributeAccumulator
 
-    def initialize(value = nil, *blocks)
-      if value
-        @value = value
-      else
-        @value = {}
-        blocks.each { |blk| instance_exec(&blk) }
+    def self.accumulate(*blks, &blk)
+      blks << blk if blk
+      new(*blks)
+    end
+
+    def initialize(*blks)
+      @hash = {}
+      blks.each { |b| instance_exec(&b) }
+    end
+
+    def accumulate(&blk)
+      instance_exec(&blk)
+    end
+
+    def hashify(hash = nil)
+      return hashify(@hash) if !hash
+      hash.inject({}) do |h, (k,v) |
+        v = v.hashify if v.respond_to?(:hashify)
+        h.merge!(k => v)
       end
     end
 
-    def []
-      @value
-    end
-
-    def method_missing(m, args = nil, &block)
-      return @value[m] = args if args
-      super
+    def method_missing(m, *args, &blk)
+      args = args[0] if args.length == 1
+      if blk
+        if @hash[m]
+          @hash[m].accumulate(&blk)
+        else
+          @hash[m] = AttributeAccumulator.accumulate(&blk)
+        end
+      else
+        @hash[m] = args
+      end
     end
   end
 
-  class Value
-    def initialize(val = nil, &blk)
-      @procs = []
-      @val = val
-      @procs << blk if blk
-    end
-
-    def inherit(other_value)
-      @procs = other_value.procs.dup.concat(procs)
-      @val = other_value.value
-      @marshals_with = other_value.marshals
-      self
-    end
-
-    def evaluate!
-      @value = ValueBox.new(@val, *@procs)
-      self
-    end
-
-    def marshals_with(key = nil, &blk)
-      @marshals_with = key || blk
-    end
-
-    def marshal(target)
-      return @value[] if !@marshals_with
-      if @value[].respond_to?(@marshals_with)
-        @value[].send(@marshals_with)
-      else
-        target.send(@marshals_with, @value[])
-      end
-    end
-
-    protected
-    def procs
-      @procs
-    end
-
-    def marshals
-      @marshals_with
-    end
-
-    def value
-      @val
-    end
-
-  end
-
-  class Definition
-
-    attr_reader :meth, :value
-
-    def initialize(name, target, options = {})
-      @name = name
-      @target = target
-      @method_stubs = []
-      @attributes = Value.new(nil)
-
-      if options && options[:extends]
-        @extends = options[:extends]
-      end
-    end
-
-    def mocks(symbol = nil)
-      return @meth if symbol.nil?
-      @meth = symbol
-    end
-
-    def stubs(m, *args, &blk)
-      setup = {}
-      setup[:method] = m
-      setup[:options] =  args.reject { |h| h.is_a? Hash }
-      setup[:arguments] = args
-      setup[:block] = blk
-      @method_stubs << setup
-      self
+  class BoundaryMock
+    def initialize(attributes = [], stubs = [], transients = [], validators = [])
+      @attributes = AttributeAccumulator.accumulate(*attributes).hashify
     end
 
     def mock!(callback)
@@ -107,57 +52,71 @@ module Boundaries
         callback.call(config[:method], rv, *config[:arguments])
       end
     end
+  end
+
+  class MethodStub
+    def initialize(m, *args)
+    end
+  end
+
+  class Definition
+
+    attr_reader :meth, :value
+
+    def initialize(name, options = {})
+      @name = name
+      @stubs = []
+      @validators = []
+      @attributes = []
+      @transients = []
+
+      if options && extends = options[:extends]
+        @stubs.concat(extends.get_stubs)
+        @validators.concat(extends.get_validators)
+        @attributes.concat(extends.get_attributes)
+        @transients.concat(extends.get_transients)
+      end
+    end
+
+    def stubs(m, *args)
+      stub = MethodStub.new(m, *args)
+      @stubs << stub
+      stub
+    end
+
 
     def attributes(&blk)
-      @attributes = Value.new(value, &blk)
+      @attributes << blk
+    end
+
+    def transients(&blk)
+      @transients << blk
     end
 
     def validates(sym = nil, &blk)
-      return @validates if sym.nil? && !blk
-      if sym == false
-        @validates = false
-        return self
-      end
-      @validates = true
-      @validate_strategy = sym || blk
-      self
+      @validators << Validator.new(sym, blk)
     end
 
-    def evaluate!(definitions, attributes)
-      extending_class = nil
-      if @extends
-        extending_class = definitions[@extends]
-        raise if extending_class.nil?
-        @meth ||= extending_class.meth
-        @method_stubs.concat extending_class.method_stubs
-        @validates = extending_class.validates if @validates.nil?
-        @validate_strategy ||= extending_class.validate_strategy if @validates
-        @attributes.inherit(extending_class.get_attributes)
-      end
-      @attributes.evaluate!
-    end
-
-    def to_hash
-    end
-
-    def validate_strategy
-      @validate_strategy
-    end
-
-    def stubbed_methods
-      @method_stubs
+    def generate
+      BoundaryMock.new(@attributes, @stubs, @transients, @validators)
     end
 
     protected
-    def method_stubs
-      @method_stubs
-    end
 
     def get_attributes
       @attributes
     end
-    private
 
+    def get_validators
+      @validators
+    end
 
+    def get_stubs
+      @stubs
+    end
+
+    def get_transients
+      @transients
+    end
   end
 end
