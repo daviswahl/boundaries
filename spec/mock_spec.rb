@@ -38,12 +38,12 @@ describe Mock do
     let(:get_with_return) { { :get => [ lambda { with(:search).and_returns {}  } ] } }
 
     it 'evaluates attributes' do
-      foo = Mock.new([], [put] )
+      foo = Mock.new([], put )
       expect(foo.stubs[:put]).to all(be_a(MethodStub))
     end
 
     it 'multiple stubs' do
-      foo = Mock.new([], [put, get])
+      foo = Mock.new([], put.merge(get))
       expect(foo.stubs.values.flatten).to all(be_a(MethodStub))
     end
   end

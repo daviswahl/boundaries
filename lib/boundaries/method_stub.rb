@@ -11,7 +11,12 @@ module Boundaries
       args = args[0] if args.length == 1
       @returns = { value: args, block: blk }
     end
+
+    def and_validates_with(symbol = nil, &blk)
+      @validates = symbol || blk
+    end
+
     private
-    attr_reader :arguments, :returns, :block
+    attr_reader :arguments, :returns, :block, :validates
   end
 end

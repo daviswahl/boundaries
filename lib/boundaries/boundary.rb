@@ -16,24 +16,24 @@ module Boundaries
     end
 
     def self.value_of(key, return_key = nil)
-      raise BoundaryUndefined if !@defined.include?(key)
-      @defined[key].return_value(return_key)
+      raise BoundaryUndefined if !@definitions.include?(key)
+      @definitions[key].return_value(return_key)
     end
 
-    def self.define(key, options={}, &blk)
-      definition = Boundaries::Definition.new(key, self, options)
-      definition.instance_exec(&blk)
+    def self.define(key, &blk)
+      definition = Boundaries::Definition.new(key)
 
+      definition.instance_exec(&blk)
       @definitions[key] = definition
       #@mocks[key] = BoundaryMock.new(definition)
     end
 
     def self.list
-      @defined.keys
+      @definitions.keys
     end
 
     def self.get(key)
-      @defined[key]
+      @definitions[key]
     end
 
     def self.target(target = nil)
@@ -45,7 +45,7 @@ module Boundaries
     end
 
     def self.mock(key)
-      @defined[key].mock!(@class_interface_callback)
+      @definitions[key].mock!(@class_interface_callback)
     end
 
     def self.class_interface(&blk)
@@ -61,7 +61,7 @@ module Boundaries
     end
 
     def self.test_cases
-      @defined.select { |_,v| v.validates? }
+      @definitions.select { |_,v| v.validates? }
     end
 
     def self.to_value(hash)
@@ -69,7 +69,7 @@ module Boundaries
     end
 
     def self.clear
-      @defined = {}
+      @definitions = {}
     end
 
     def self.validate(definition)
