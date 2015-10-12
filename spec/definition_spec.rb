@@ -14,7 +14,9 @@ describe Definition do
       attr2 :foo
     end
 
-    foo.stubs(:bar, :a)
+    foo.stubs(:get) do
+      attr2 :foo
+    end
     foo
   end
 
@@ -30,10 +32,11 @@ describe Definition do
     end
 
     it 'stubs' do
-      stub = @foo2.stubs(:bar, :batz)
-      expect(@foo2.get_stubs).to contain_exactly(stub)
+      prc = -> { bar :batz }
+      stub = @foo2.stubs(:foo, &prc)
+      expect(@foo2.get_stubs[:foo]).to include(prc)
     end
-
+      
     it 'transients' do
       @foo2.transients{ bar :batz }
       expect(@foo2.get_transients.first).to be_a(Proc)
@@ -58,9 +61,10 @@ describe Definition do
     end
 
     it 'stubs' do
-      stub = @foo2.stubs(:b, :asdf)
-      expected = [foo.get_stubs, stub].flatten!
-      expect(@foo2.get_stubs).to eq(expected)
+      attrs = lambda { attr2 :asdf }
+      @foo2.stubs(:get, &attrs)
+      expected = foo.get_stubs[:get].concat([attrs])
+      expect(@foo2.get_stubs[:get]).to eq(expected)
     end
   end
 

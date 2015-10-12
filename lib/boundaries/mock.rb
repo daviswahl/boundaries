@@ -1,9 +1,17 @@
 module Boundaries
   class Mock
-    attr_reader :attributes
+    attr_reader :attributes, :stubs
     def initialize(attributes = [], stubs = [], transients = [], validators = [])
-      @attributes = Accumulator.accumulate(*attributes).hashify
-    end
+      accumulate = ->(arr, acc = BlockAccumulator) { arr.inject(acc.new) { |acc, blk| acc.accumulate(&blk) }.serialize }
+      @attributes = accumulate[attributes]
+      @transients = accumulate[transients]
+      @validators = accumulate[validators]
+  
+      @stubs = {}
+      stubs.each do  |s| 
+        s.each_pair { |k,v| @stubs[k] = accumulate[v, StubAccumulator] } 
+      end 
+   end
 
     def mock!(callback)
       @method_stubs.each do |config|

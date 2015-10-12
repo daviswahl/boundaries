@@ -28,4 +28,24 @@ describe Mock do
       expect(foo.attributes).to eq( { :attr1 => :base, :attr2 =>  { :attr1 => :new_value, :attr2 => :base } } )
     end
   end
+
+  describe 'setting stubs' do
+    before(:each) { MethodStub.send(:public, *MethodStub.private_instance_methods) }
+
+    let(:put) { { :put => [ lambda { allows :bat } ] } } 
+    let(:get) { { :get => [ lambda { allows :search; allows :bar }, lambda { allows :foo } ] } }
+
+    let(:get_with_return) { { :get => [ lambda { allows(:search).and_returns {}  } ] } }
+
+    it 'evaluates attributes' do
+      foo = Mock.new([], [put] )
+      expect(foo.stubs[:put]).to all(be_a(MethodStub))
+    end
+
+    it 'multiple stubs' do
+      foo = Mock.new([], [put, get])
+      expect(foo.stubs.values.flatten).to all(be_a(MethodStub))
+    end
+  end
+
 end

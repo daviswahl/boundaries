@@ -1,25 +1,26 @@
 module Boundaries
-  class Accumulator
+  class BlockAccumulator
 
-    def self.accumulate(*blks, &blk)
-      blks << blk if blk
-      new(*blks)
-    end
-
-    def initialize(*blks)
-      @hash = {}
-      blks.each { |b| instance_exec(&b) }
+    def initialize
+      @acc = {}
     end
 
     def accumulate(&blk)
       instance_exec(&blk)
+      self
     end
 
-    def hashify(hash = nil)
-      return hashify(@hash) if !hash
-      hash.inject({}) do |h, (k,v) |
-        v = v.hashify if v.respond_to?(:hashify)
-        h.merge!(k => v)
+    def self.accumulate(&blk)
+      acc = new
+      acc.accumulate(&blk)
+      acc
+    end
+
+    def serialize(acc = nil)
+      return serialize(@acc) if !acc
+      acc.inject({}) do |h, (k,v) |
+        v = v.serialize if v.respond_to?(:serialize)
+        h.merge!(k => v) if h.is_a? Hash
       end
     end
 
@@ -27,14 +28,35 @@ module Boundaries
       args.flatten!
       args = args[0] if args.length == 1
       if blk
-        if @hash[m] && @hash[m].is_a?(Accumulator)
-          @hash[m].accumulate(&blk)
+        if @acc[m] && @acc[m].is_a?(BlockAccumulator)
+          @acc[m].accumulate(&blk)
         else
-          @hash[m] = Accumulator.accumulate(&blk)
+          @acc[m] = BlockAccumulator.accumulate(&blk)
         end
       else
-        @hash[m] = args
+        @acc[m] = args
       end
+    end
+  end
+
+  class StubAccumulator < BlockAccumulator
+    def initialize
+      @acc = []
+    end
+
+    def serialize(acc = nil)
+      return serialize(@acc) if !acc
+      acc.inject([]) do |h, v|
+        v = v.serialize if v.respond_to?(:serialize)
+        h << v if h.is_a? Array
+      end
+    end
+    def allows(*args, &blk)
+      @acc << MethodStub.new(*args, &blk)
+    end
+
+    def method_missing(m, *args, &blk)
+      self.class.send(:method_missing, m, *args, &blk)
     end
   end
 end

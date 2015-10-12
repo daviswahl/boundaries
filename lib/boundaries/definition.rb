@@ -5,23 +5,21 @@ module Boundaries
 
     def initialize(name, options = {})
       @name = name
-      @stubs = []
+      @stubs = Hash.new { |h, k| h[k] = [] }
       @validators = []
       @attributes = []
       @transients = []
 
       if options && extends = options[:extends]
-        @stubs.concat(extends.get_stubs)
+        @stubs.merge!(extends.get_stubs) { |h, l, r| [].concat(r).concat(l)  }
         @validators.concat(extends.get_validators)
         @attributes.concat(extends.get_attributes)
         @transients.concat(extends.get_transients)
       end
     end
 
-    def stubs(m, *args)
-      stub = MethodStub.new(m, *args)
-      @stubs << stub
-      stub
+    def stubs(key, &blk)
+      @stubs[key] << blk
     end
 
 
