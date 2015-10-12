@@ -1,13 +1,49 @@
 require 'spec_helper'
-
-class Foo
-  def self.get()
-    false
+require 'json'
+class Interface
+  def self.get(arg)
+    case arg
+    when :foo1
+      { attr1: :foo, attr2: :bar, attr3: :batz }
+    when :foo2
+      :foo2
+    else
+      false
+    end
   end
 end
+
+class MockInterface
+  def self.stub(m, kwargs)
+
+  end
+
+  def self.get(kwargs, blk)
+  end
+end
+
+class Foo
+  @interface = Interface
+  def self.get(arg = nil)
+    @interface.get(arg)
+  end
+end
+
 class FooBoundary < Boundaries::Boundary
     TARGET = Foo
-    mock_attributes :attr1, :attr2, :attr3
+
+    @interface  = MockInterface.new
+
+    def self.includes(actual, expected)
+      expect(actual).to include(expected)
+    end
+
+    class_interface do |m, *args, &blk|
+      #Faraday::Adapters::Test::Stub.new(kwargs, &blk)
+    end
+    def self.foo_class_method(arg)
+      binding.pry
+    end
 end
 
 class BarBoundary < Boundaries::Boundary
@@ -20,18 +56,23 @@ describe Boundaries do
     FooBoundary.clear
 
     FooBoundary.define :foo1 do
-      mocks :get
 
-      accepts /arg1/
-
-      returns do
+      attributes do
         attr1 :foo
         attr2 :bar
         attr3 :batz
       end
-      validates :includes
+      
+      transient do
+        org_admin? 'true'
+      end
+      
+      stubs(:get, 'orgAdmin', { foo: bar }).and_returns(:org_admin?).with_marshal(:to_response)
+
+      stubs(:get, :foo, [1], { foo: :bar}).and_returns(:self, :to_json).and_validates(:includes)
     end
   end
+
   let(:foo1) { FooBoundary.class_eval { @defined[:foo1] } }
   let(:foo2) { FooBoundary.class_eval { @defined[:foo2] } }
 
@@ -43,7 +84,6 @@ describe Boundaries do
         self
       end
     }
-    FooBoundary.prepare(self)
   end
 
   it 'has a version number' do
@@ -51,20 +91,26 @@ describe Boundaries do
   end
 
   it 'you can add mocks' do
-    expect(FooBoundary.value_of(:foo1)).to eq({ attr1: :foo, attr2: :bar, attr3: :batz })
+    expect(FooBoundary.value_of(:foo1, :json_response)).to eq( { attr1: :foo, attr2: :bar, attr3: :batz })
   end
 
   it 'mock instances are not shared between subclasses' do
-    expect { BarBoundary.value_of(:foo1) }.to raise_error(Boundaries::BoundaryUndefined)
+    expect { BarBoundary.value_of(:foo1, :json_response) }.to raise_error(Boundaries::BoundaryUndefined)
   end
 
   it 'can mock' do
     FooBoundary.mock(:foo1)
-    expect(Foo.get).to eq(FooBoundary.value_of(:foo1))
+    #expect(Foo.get).to eq(FooBoundary.value_of(:foo1, :json_response))
   end
 
   it 'is it unmocked' do
     expect(Foo.get).to be false
+  end
+
+  describe 'validating' do
+    it 'validates' do
+      FooBoundary.validate(foo1)
+    end
   end
 
   describe 'extending' do
@@ -72,66 +118,63 @@ describe Boundaries do
       before(:each) { @foo2.call {} }
 
       it 'attributes' do
-        expect(foo2.to_value).to eq(foo1.to_value)
+        expect(foo2.return_value(:json_response)).to eq(foo1.return_value(:json_response))
       end
 
       it 'accepts' do
-        expect(foo2.get_accepts).to eq(foo1.get_accepts)
+        expect(foo2.stubbed_methods).to eq(foo1.stubbed_methods)
       end
 
       it 'validates' do
-        expect(foo2.get_validates).to eq(foo1.get_validates)
+        expect(foo2.validates).to eq(foo1.validates)
       end
 
       it 'validate_strategy' do
-        expect(foo2.get_validate_strategy).to eq(foo1.get_validate_strategy)
+        expect(foo2.validate_strategy).to eq(foo1.validate_strategy)
       end
 
       it 'mocks' do
-        expect(foo2.get_meth).to eq(foo1.get_meth)
+        expect(foo2.meth).to eq(foo1.meth)
       end
-
     end
 
     describe 'overriding' do
       it 'attributes' do
         @foo2.call  do
-          returns { attr1 :foo2 }
+          #returns(:json_response) { attr1 :foo2 }
         end
-        expected = foo1.to_value
+        expected = foo1.return_value(:json_response)
         expected[:attr1] = :foo2
-        expect(foo2.to_value).to eq(expected)
+        expect(foo2.return_value(:json_response)).to eq(expected)
       end
 
-      it 'accepts' do
+      it 'stubs' do
         @foo2.call do
-          accepts /foo2/
+          stubs :get, :foo2
         end
-        expect(foo2.get_accepts).to eq(/foo2/)
+        #expect(foo2.stubbed_methods).to eq({:get => :foo2 } )
       end
 
-      it 'validates', wip: true do
+      it 'validates' do
         @foo2.call do
           validates false
         end
-        expect(foo2.get_validates).to eq(false)
+        expect(foo2.validates).to eq(false)
       end
 
       it 'validates_strategy' do
         @foo2.call do
           validates :custom
         end
-        expect(foo2.get_validate_strategy).to eq(:custom)
+        expect(foo2.validate_strategy).to eq(:custom)
       end
 
       it 'mocks' do
         @foo2.call do
           mocks :post
         end
-        expect(foo2.get_meth).to eq(:post)
+        expect(foo2.meth).to eq(:post)
       end
-
-
     end
 
   end

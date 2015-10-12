@@ -1,10 +1,13 @@
 require 'rspec/mocks/standalone'
+require 'rspec/expectations'
 require 'boundaries/definition'
 
 module Boundaries
   class BoundaryUndefined < StandardError; end
 
   class Boundary
+    extend RSpec::Matchers
+
     def self.inherited(klass)
       klass.class_eval do
         @defined = {}
@@ -13,29 +16,40 @@ module Boundaries
       end
     end
 
-    def self.value_of(key)
+    def self.value_of(key, return_key = nil)
       raise BoundaryUndefined if !@defined.include?(key)
-      @defined[key].to_value
-    end
-
-    def self.mock_attributes(*symbols)
-      @definition.set_mock_attributes(symbols)
+      @defined[key].return_value(return_key)
     end
 
     def self.define(key, options={}, &blk)
-      definition = @definition.new(key, self, options).instance_exec(&blk)
+      definition = @definition.new(key, self, options)
+      definition.instance_exec(&blk)
       definition.evaluate!(@defined, @mock_attributes)
       @defined[key] = definition
     end
 
-    def self.prepare(klass)
-      @caller = klass
+    def self.list
+      @defined.keys
+    end
+
+    def self.get(key)
+      @defined[key]
+    end
+
+    def self.target(target = nil)
+      @target = target if target
+      @target
+    end
+
+    def self.interface
     end
 
     def self.mock(key)
-      @caller.instance_exec(target, @defined[key]) do |target, definition|
-        allow(target).to receive(definition.meth).and_return(definition.to_value)
-      end
+      @defined[key].mock!(@class_interface_callback)
+    end
+
+    def self.class_interface(&blk)
+      @class_interface_callback = blk
     end
 
     def self.run_tests
@@ -53,14 +67,15 @@ module Boundaries
     def self.to_value(hash)
       hash
     end
+
     def self.clear
       @defined = {}
     end
 
-    private
-
-    def self.target
-      self::TARGET
+    def self.validate(definition)
+      #actual = target.send(definition.meth, definition.accepts)
+      #raise "Undefined validation strategy" if !respond_to?(definition.validate_strategy)
+      #send(definition.validate_strategy, actual, definition.to_value)
     end
   end
 end

@@ -1,46 +1,119 @@
 module Boundaries
+  class ValueBox < BasicObject
+
+    def initialize(value = nil, *blocks)
+      if value
+        @value = value
+      else
+        @value = {}
+        blocks.each { |blk| instance_exec(&blk) }
+      end
+    end
+
+    def []
+      @value
+    end
+
+    def method_missing(m, args = nil, &block)
+      return @value[m] = args if args
+      super
+    end
+  end
+
+  class Value
+    def initialize(val = nil, &blk)
+      @procs = []
+      @val = val
+      @procs << blk if blk
+    end
+
+    def inherit(other_value)
+      @procs = other_value.procs.dup.concat(procs)
+      @val = other_value.value
+      @marshals_with = other_value.marshals
+      self
+    end
+
+    def evaluate!
+      @value = ValueBox.new(@val, *@procs)
+      self
+    end
+
+    def marshals_with(key = nil, &blk)
+      @marshals_with = key || blk
+    end
+
+    def marshal(target)
+      return @value[] if !@marshals_with
+      if @value[].respond_to?(@marshals_with)
+        @value[].send(@marshals_with)
+      else
+        target.send(@marshals_with, @value[])
+      end
+    end
+
+    protected
+    def procs
+      @procs
+    end
+
+    def marshals
+      @marshals_with
+    end
+
+    def value
+      @val
+    end
+
+  end
+
   class Definition
 
     attr_reader :meth, :value
 
     def initialize(name, target, options = {})
       @name = name
-      @boundary_target = target
+      @target = target
+      @method_stubs = []
+      @attributes = Value.new(nil)
+
       if options && options[:extends]
         @extends = options[:extends]
       end
     end
 
-    def self.set_mock_attributes(attrs)
-      @mock_attributes = attrs
-      attrs.each do |attribute|
-        define_method(attribute) { |value| instance_variable_set("@#{__method__}", value) }
-      end
-    end
-
-     def mocks(symbol)
+    def mocks(symbol = nil)
+      return @meth if symbol.nil?
       @meth = symbol
     end
 
-    def accepts(args)
-      @accepts = args
+    def stubs(m, *args, &blk)
+      setup = {}
+      setup[:method] = m
+      setup[:options] =  args.reject { |h| h.is_a? Hash }
+      setup[:arguments] = args
+      setup[:block] = blk
+      @method_stubs << setup
       self
     end
 
-    def to_value
-      @boundary_target.to_value(to_hash)
+    def mock!(callback)
+      @method_stubs.each do |config|
+        rv = nil
+        options = config[:options]
+        if options && options[:returns]
+          rv = return_value(options[:returns])
+        end
+        callback.call(config[:method], rv, *config[:arguments])
+      end
     end
 
-    def returns(&blk)
-      @returns = blk
-      self
-    end
-
-    def validates?
-      @validates
+    def attributes(&blk)
+      @attributes = Value.new(value, &blk)
     end
 
     def validates(sym = nil, &blk)
+      return @validates if sym.nil? && !blk
       if sym == false
         @validates = false
         return self
@@ -55,47 +128,35 @@ module Boundaries
       if @extends
         extending_class = definitions[@extends]
         raise if extending_class.nil?
-        instance_exec(&extending_class.get_returns)
-        @meth ||= extending_class.get_meth
-        @accepts ||= extending_class.get_accepts
-        @validates = extending_class.get_validates if @validates.nil?
-        @validate_strategy ||= extending_class.get_validate_strategy if @validates
+        @meth ||= extending_class.meth
+        @method_stubs.concat extending_class.method_stubs
+        @validates = extending_class.validates if @validates.nil?
+        @validate_strategy ||= extending_class.validate_strategy if @validates
+        @attributes.inherit(extending_class.get_attributes)
       end
-      @returns.call if @returns
+      @attributes.evaluate!
     end
 
     def to_hash
-      hash = {}
-      self.class.mock_attributes.each do |k|
-        hash[k] = instance_variable_get("@#{k}")
-      end
-      hash
     end
 
-    def get_returns
-      @returns
-    end
-
-    def get_accepts
-      @accepts
-    end
-
-    def get_validates
-      @validates
-    end
-
-    def get_validate_strategy
+    def validate_strategy
       @validate_strategy
     end
 
-    def get_meth
-      @meth
+    def stubbed_methods
+      @method_stubs
     end
 
-    private
-    def self.mock_attributes
-      @mock_attributes
+    protected
+    def method_stubs
+      @method_stubs
     end
+
+    def get_attributes
+      @attributes
+    end
+    private
 
 
   end
