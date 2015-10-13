@@ -1,7 +1,8 @@
 module Boundaries
   class Mock
-    attr_reader :attributes, :stubs
-    def initialize(attributes = [], stubs = {}, transients = [], validators = [])
+    attr_reader :attributes, :stubs, :target
+
+    def initialize(attributes = [], stubs = {}, transients = [], validators = [], target)
       accumulate = ->(arr, acc = BlockAccumulator) { arr.inject(acc.new) { |acc, blk| acc.accumulate(&blk) }.serialize }
       @attributes = accumulate[attributes]
       @transients = accumulate[transients]
@@ -9,17 +10,22 @@ module Boundaries
   
       @stubs = {}
       stubs.each_pair { |k,v| @stubs[k] = accumulate[v, StubAccumulator] }
+     
+      @target = target 
    end
-
-    def mock!(callback)
-      @method_stubs.each do |config|
-        rv = nil
-        options = config[:options]
-        if options && options[:returns]
-          rv = return_value(options[:returns])
-        end
-        callback.call(config[:method], rv, *config[:arguments])
+  
+    def handle_message(m, *args, &blk)
+      matched = @stubs[m].find { |stub| stub.matches?(*args) }
+      binding.pry
+      if matched
+        @target.instance_exec(matched.returns)
+      else
+        @target.replaced_methods[m].call(*args, &blk)
       end
+    end
+
+    def mock!
+      binding.pry
     end
   end
 end

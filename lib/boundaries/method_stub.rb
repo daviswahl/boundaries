@@ -16,7 +16,19 @@ module Boundaries
       @validates = symbol || blk
     end
 
+    def matches?(*args)
+      @arguments == args
+    end
+    
+    def returns
+      v = @returns[:value]
+      blk = @returns[:block]
+      binding.pry
+      return v if v && !blk
+      return blk if blk && !v
+      return blk.curry(v)
+    end
     private
-    attr_reader :arguments, :returns, :block, :validates
+    attr_reader :arguments, :block, :validates
   end
 end

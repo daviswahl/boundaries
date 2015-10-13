@@ -35,8 +35,8 @@ module Boundaries
       @validators << Validator.new(sym, blk)
     end
 
-    def generate
-      Mock.new(@attributes, @stubs, @transients, @validators)
+    def actualize(target)
+      Mock.new(@attributes, @stubs, @transients, @validators, target)
     end
 
     protected

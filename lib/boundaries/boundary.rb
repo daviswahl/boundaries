@@ -11,6 +11,7 @@ module Boundaries
     def self.inherited(klass)
       klass.class_eval do
         @definitions = {}
+        @actualized = {}
         @caller = nil
       end
     end
@@ -25,7 +26,7 @@ module Boundaries
 
       definition.instance_exec(&blk)
       @definitions[key] = definition
-      #@mocks[key] = BoundaryMock.new(definition)
+      @actualized[key] = definition.actualize(self)
     end
 
     def self.list
@@ -33,7 +34,7 @@ module Boundaries
     end
 
     def self.get(key)
-      @definitions[key]
+      @actualized[key]
     end
 
     def self.target(target = nil)

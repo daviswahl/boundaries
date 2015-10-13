@@ -20,6 +20,5 @@ end
 
 describe Boundary do
   it 'does stuff' do
-    binding.pry
   end
 end
