@@ -9,11 +9,23 @@ module Boundaries
     extend RSpec::Matchers
 
     def self.inherited(klass)
+      Boundaries.register_class(klass)
       klass.class_eval do
         @definitions = {}
         @actualized = {}
         @caller = nil
       end
+    end
+    
+    def self.unmock!
+      @actualized.each { |_, v| v.unmock! }
+    end
+
+    def self.execute_prepared_block(block)
+      args = block.arguments
+      binding.pry
+      return instance_exec(*args, &block.block) if block.block
+      args
     end
 
     def self.value_of(key, return_key = nil)

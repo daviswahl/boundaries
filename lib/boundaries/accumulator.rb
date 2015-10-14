@@ -1,7 +1,8 @@
 module Boundaries
   class BlockAccumulator
 
-    def initialize
+    def initialize(mock)
+      @mock = mock
       @acc = {}
     end
 
@@ -23,7 +24,6 @@ module Boundaries
         h.merge!(k => v) if h.is_a? Hash
       end
     end
-
     def method_missing(m, *args, &blk)
       args.flatten!
       args = args[0] if args.length == 1
@@ -40,9 +40,15 @@ module Boundaries
   end
 
   class StubAccumulator < BlockAccumulator
-    def initialize
+    def initialize(mock)
+      @mock = mock
       @acc = []
     end
+
+    def attributes
+      @mock.attributes
+    end
+
 
     def serialize(acc = nil)
       return serialize(@acc) if !acc

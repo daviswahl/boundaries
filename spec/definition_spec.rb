@@ -71,7 +71,7 @@ describe Definition do
   describe 'generating' do
     before(:each) { @foo2 = Definition.new(:foo) }
     it 'creates a boundary mock' do
-      expect(@foo2.generate).to be_a(Mock)
+      expect(@foo2.actualize(Boundary)).to be_a(Mock)
     end
   end
 end

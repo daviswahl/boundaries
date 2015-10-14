@@ -18,11 +18,13 @@ describe MethodStub do
     let(:foo_with_return_block) { with_foo_with_return_block.serialize.first }
 
     it 'can set return values' do
-      expect(foo_with_return.returns).to eq({ value: :bar, block: nil})
+      expect(foo_with_return.returns).to eq(PreparedBlock.new(:bar))
     end
 
     it 'can set return block' do
-      expect(foo_with_return_block.returns).to eq({ value: :bar, block: a_proc})
+      block = PreparedBlock.new(:bar, &a_proc)
+      binding.pry
+      expect(foo_with_return_block.returns).to eq(block)
     end
 
     it 'can set arguments' do

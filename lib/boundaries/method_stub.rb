@@ -1,8 +1,24 @@
 module Boundaries
+  class PreparedBlock
+    attr_reader :block, :arguments
+    def initialize(args=nil, &blk)
+      @arguments = args
+      @block = blk
+    end
+
+    def call
+      binding.pry
+      @block.call(*@arguments)
+    end
+
+    def ==(other)
+      return (other.block == block && other.arguments == arguments)
+    end
+  end
+
   class MethodStub
     def initialize(*args)
       args.flatten!
-      args = args[0] if args.length == 1
       @arguments = args
     end
     
@@ -24,9 +40,7 @@ module Boundaries
       v = @returns[:value]
       blk = @returns[:block]
       binding.pry
-      return v if v && !blk
-      return blk if blk && !v
-      return blk.curry(v)
+      return PreparedBlock.new(v, &blk)
     end
     private
     attr_reader :arguments, :block, :validates
