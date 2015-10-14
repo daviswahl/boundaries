@@ -23,7 +23,6 @@ module Boundaries
 
     def self.execute_prepared_block(block)
       args = block.arguments
-      binding.pry
       return instance_exec(*args, &block.block) if block.block
       args
     end

@@ -7,13 +7,12 @@ module Boundaries
       @attributes = accumulate[attributes]
       @transients = accumulate[transients]
       @validators = accumulate[validators]
-
+      
       @class_stubs = {}
       class_stubs.each_pair { |k,v| @class_stubs[k] = accumulate[v, StubAccumulator] }
       
       @instance_stubs = {}
       instance_stubs.each_pair { |k,v| @instance_stubs[k] = accumulate[v, StubAccumulator] }
-      binding.pry 
       @target = target 
       @redefined_methods = {class: {}, instance: {}} 
    end
@@ -33,8 +32,8 @@ module Boundaries
     def mock!
       klass = target.target
       metaclass = klass.class_eval { class << self; self; end }
-      @class_stubs.keys.each do |key|
 
+      @class_stubs.keys.each do |key|
         @redefined_methods[:class][key] = metaclass.instance_method(key) 
         #@redefined_methods[:class][key] = "aliased_class_#{key}"
         #metaclass.send(:alias_method, "aliased_#{key}", key)
@@ -65,6 +64,7 @@ module Boundaries
       @redefined_methods[:instance].each do |k,v|
         klass.send(:define_method, k, v)
       end
+
       @redefined_methods = { class: [], instance: [] } 
       true
     end

@@ -46,7 +46,6 @@ describe Boundary do
     b.mock!
     #expect(Foo.get(:bar)).to eq(:bar)
     expect(Foo.get('get', 'hat')).to eq('hat caaan do')
-    binding.pry
     #expect(Foo.new.get).to eq(:unmodified)
     #expect(Foo.new.get(:bar)).to eq(:bar)
   end

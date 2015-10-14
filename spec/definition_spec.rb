@@ -14,8 +14,12 @@ describe Definition do
       attr2 :foo
     end
 
-    foo.stubs(:get) do
-      attr2 :foo
+    foo.instance_stub(:get) do
+      with(:bar).and_returns(:foo)
+    end
+
+    foo.class_stub(:get) do
+      with(:bar).and_returns(:foo)
     end
     foo
   end
@@ -33,8 +37,8 @@ describe Definition do
 
     it 'stubs' do
       prc = -> { bar :batz }
-      stub = @foo2.stubs(:foo, &prc)
-      expect(@foo2.get_stubs[:foo]).to include(prc)
+      stub = @foo2.instance_stub(:foo, &prc)
+      expect(@foo2.get_instance_stubs[:foo]).to include(prc)
     end
       
     it 'transients' do
@@ -62,9 +66,9 @@ describe Definition do
 
     it 'stubs' do
       attrs = lambda { attr2 :asdf }
-      @foo2.stubs(:get, &attrs)
-      expected = foo.get_stubs[:get].concat([attrs])
-      expect(@foo2.get_stubs[:get]).to eq(expected)
+      @foo2.instance_stub(:get, &attrs)
+      expected = foo.get_instance_stubs[:get].concat([attrs])
+      expect(@foo2.get_instance_stubs[:get]).to eq(expected)
     end
   end
 

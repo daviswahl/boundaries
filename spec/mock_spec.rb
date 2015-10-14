@@ -11,20 +11,20 @@ describe Mock do
     ] }
 
     it 'evaluates attributes' do
-      foo = mock.new(attrs, {}, [], [], Boundary)
+      foo = mock.new(attrs, {}, {}, [], [], Boundary)
       expect(foo.attributes).to eq( { :attr1 => :base, :attr2 => :base } )
     end
 
     it 'nested attrs' do
-      foo = mock.new(nested_attrs, {}, [], [], Boundary)
+      foo = mock.new(nested_attrs, {}, {}, [], [], Boundary)
       expect(foo.attributes).to eq( { :attr1 => :base, :attr2 => { attr1: :base, attr2: :base } } )
     end
     it 'inherited attrs' do
-      foo = mock.new(inherit_attrs, {}, [], [], Boundary)
+      foo = mock.new(inherit_attrs, {}, {}, [], [], Boundary)
       expect(foo.attributes).to eq( { :attr1 => :base, :attr2 => :new_value, :attr3 => :new_value } )
     end
     it 'inherited nested attrs' do
-      foo = mock.new(nested_inherit_attrs, {}, [], [], Boundary)
+      foo = mock.new(nested_inherit_attrs, {}, {}, [], [], Boundary)
       expect(foo.attributes).to eq( { :attr1 => :base, :attr2 =>  { :attr1 => :new_value, :attr2 => :base } } )
     end
   end
@@ -38,13 +38,13 @@ describe Mock do
     let(:get_with_return) { { :get => [ lambda { with(:search).and_returns {}  } ] } }
 
     it 'evaluates attributes' do
-      foo = Mock.new([], put, [], [], Boundary )
-      expect(foo.stubs[:put]).to all(be_a(MethodStub))
+      foo = Mock.new([], put, {}, [], [], Boundary )
+      expect(foo.class_stubs[:put]).to all(be_a(MethodStub))
     end
 
     it 'multiple stubs' do
-      foo = Mock.new([], put.merge(get))
-      expect(foo.stubs.values.flatten).to all(be_a(MethodStub))
+      foo = Mock.new([], put.merge(get), {}, [], [], Boundary)
+      expect(foo.class_stubs.values.flatten).to all(be_a(MethodStub))
     end
   end
 

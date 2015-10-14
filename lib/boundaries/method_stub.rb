@@ -7,7 +7,6 @@ module Boundaries
     end
 
     def call
-      binding.pry
       @block.call(*@arguments)
     end
 
@@ -39,7 +38,6 @@ module Boundaries
     def returns
       v = @returns[:value]
       blk = @returns[:block]
-      binding.pry
       return PreparedBlock.new(v, &blk)
     end
     private

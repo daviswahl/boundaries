@@ -11,8 +11,8 @@ module Boundaries
       self
     end
 
-    def self.accumulate(&blk)
-      acc = new
+    def self.accumulate(mock, &blk)
+      acc = new(mock)
       acc.accumulate(&blk)
       acc
     end
@@ -31,7 +31,7 @@ module Boundaries
         if @acc[m] && @acc[m].is_a?(BlockAccumulator)
           @acc[m].accumulate(&blk)
         else
-          @acc[m] = BlockAccumulator.accumulate(&blk)
+          @acc[m] = BlockAccumulator.accumulate(@mock, &blk)
         end
       else
         @acc[m] = args
